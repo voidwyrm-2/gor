@@ -12,7 +12,18 @@ hello <- "Hello, Catdog!"
 puts(hello)
 ```
 
-### Gor Todo
+## Installation
+**Requirements**
+* Go >= 1.22.1
+
+First, install Go if you haven't already from [go.dev](go.dev)
+
+Then, run this command:
+```sh
+go install "github.com/voidwyrm-2/CBuild@latest"
+```
+
+## Gor Todo
 - [x] Variable assignment
 - [x] Expressions
 - [x] Labels and `jumpto`
@@ -20,4 +31,3 @@ puts(hello)
 - [ ] Built-in function calls
 - [ ] Custom functions
 - [ ] Containers(basically just structs)
-- [ ] 
