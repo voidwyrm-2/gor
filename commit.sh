@@ -6,7 +6,5 @@ if [ $# -ne 1 ]; then
 fi
 
 git add .
-if [ "$1" = "-m" ]; then
-    git commit . -m "$1"
-fi
+git commit . -m "$1"
 git push
