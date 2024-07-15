@@ -1,0 +1,5 @@
+hello <- "Hello!"
+
+one <- 1
+
+oneMore <- one + 1

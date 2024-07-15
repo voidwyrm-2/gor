@@ -1,0 +1,6 @@
+i <- 0
+:aLabel:
+
+i <- i + 1
+
+jumpto aLabel
