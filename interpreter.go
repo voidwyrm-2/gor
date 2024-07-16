@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -99,10 +101,18 @@ type ModuleImport struct {
 
 func Interpret(nodes []Node, file string, printVars, printVarsEachCycle bool) (ModuleImport, error) {
 	var vars = make(map[string]any)
+
 	var funcs = make(map[string]any)
 	funcs["puts"] = func(a ...any) {
 		fmt.Println(a...)
 	}
+	funcs["getStr"] = func(prompt string) string {
+		scanner := bufio.NewScanner(os.Stdin)
+		fmt.Print(prompt)
+		scanner.Scan()
+		return scanner.Text()
+	}
+
 	var labels = make(map[string]uint)
 
 	for i, node := range nodes {

@@ -23,12 +23,8 @@ Then, run this command:
 go install "github.com/voidwyrm-2/gor@latest"
 ```
 
-## Changelog for 0.4.0
-- Added a versioning system along with an automatic version checker
-- Added file importing using the `use` keyword
-- I remembered to check homebrew for Go
-- Modulus operations with `%`
-- Boolean operations
+## Changelog for 0.4.1
+- The automatic version checker is now a bit better
 
 ## Gor Todo
 - [x] Variable assignment

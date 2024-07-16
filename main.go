@@ -59,22 +59,26 @@ func CompareVersions(version_1, version_2 string) (int, error) {
 	return 0, nil
 }
 
-func CheckCurrentGorVersion(localVersion string) {
+func GetGorVersion() string {
 	res, err := http.Get("https://raw.githubusercontent.com/voidwyrm-2/gor/main/gor_version.txt")
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	nonLocalVersion, err := io.ReadAll(res.Body)
+	version, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
 		log.Fatal(err.Error())
-	}
-	if string(nonLocalVersion) == "404: Not Found" {
+	} else if string(version) == "404: Not Found" {
 		log.Fatal("'https://raw.githubusercontent.com/voidwyrm-2/gor/main/gor_version.txt' not found")
 	}
 
-	cmp, err := CompareVersions(localVersion, string(nonLocalVersion))
+	return string(version)
+}
+
+func CheckCurrentGorVersion(localVersion string) {
+	nonLocalVersion := GetGorVersion()
+	cmp, err := CompareVersions(localVersion, nonLocalVersion)
 	if err != nil {
 		log.Fatal(err.Error())
 	} else if cmp == -1 {
@@ -126,7 +130,22 @@ func readFile(fileName string) (string, error) {
 	return content, nil
 }
 
-func GorREPL(printTokens, printNodes, printVars, printVarsEachCycle bool) {
+func writeFile(filename string, data string) error {
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GorREPL(printTokens, printNodes, printVarsEachCycle bool) {
 	var codeBuffer []string
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -160,9 +179,30 @@ minor version: increment when there are minor changes
 sub minor version: increment when there are very small changes
 (e.g. a quick one-line grammar change, a change to a variable name)
 */
-var GOR_VERSION = strings.TrimSpace(assertNoError(readFile("gor_version.txt")))
+var GOR_VERSION = ""
+
+func gorInit(allowRecursion bool) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	cachedGorVersion, err := readFile(path.Join(homeDir, "gor_version.txt"))
+	if err != nil {
+		if isFile404Err(err.Error()) && allowRecursion {
+			writeFile(path.Join(homeDir, "gor_version.txt"), GetGorVersion())
+			gorInit(false)
+			return
+		}
+		log.Fatal(err.Error())
+	}
+
+	GOR_VERSION = strings.TrimSpace(cachedGorVersion)
+}
 
 func main() {
+	gorInit(true)
+
 	printTokens := slices.Contains(os.Args, "-t")
 	printNodes := slices.Contains(os.Args, "-n")
 	printVars := slices.Contains(os.Args, "-v")
@@ -185,7 +225,7 @@ func main() {
 			return
 		case "repl":
 			fmt.Println("Gor REPL(type '--exit' or '--quit' to end the repl)")
-			GorREPL(printTokens, printNodes, printVars, printVarsEachCycle)
+			GorREPL(printTokens, printNodes, printVarsEachCycle)
 		case "help":
 			fmt.Println(strings.Join([]string{
 				"'help': shows this text",
