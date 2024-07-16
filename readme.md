@@ -20,7 +20,7 @@ First, install Go if you haven't already from [go.dev](go.dev) or using homebrew
 
 Then, run this command:
 ```sh
-go install "github.com/voidwyrm-2/CBuild@latest"
+go install "github.com/voidwyrm-2/gor@latest"
 ```
 
 ## Changelog for 0.4.0
