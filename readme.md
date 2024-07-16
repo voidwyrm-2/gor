@@ -39,3 +39,5 @@ go install "github.com/voidwyrm-2/gor@latest"
 - [ ] Built-in function calls
 - [ ] Custom functions and calls
 - [ ] ~~Structs but written badly~~ containers
+
+### Hey if you know of any optimazations I can do in the code base, make an issue(please I beg of you my code is so non-preformant)
