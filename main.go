@@ -187,14 +187,26 @@ func gorInit(allowRecursion bool) {
 		log.Fatal(err.Error())
 	}
 
+	onlineGorVersion := GetGorVersion()
+
 	cachedGorVersion, err := readFile(path.Join(homeDir, "gor_version.txt"))
 	if err != nil {
 		if isFile404Err(err.Error()) && allowRecursion {
-			writeFile(path.Join(homeDir, "gor_version.txt"), GetGorVersion())
+			writeFile(path.Join(homeDir, "gor_version.txt"), onlineGorVersion)
 			gorInit(false)
 			return
 		}
 		log.Fatal(err.Error())
+	}
+
+	if assertNoError(CompareVersions(strings.TrimSpace(onlineGorVersion), strings.TrimSpace(cachedGorVersion))) == 1 {
+		err := writeFile(path.Join(homeDir, "gor_version.txt"), onlineGorVersion)
+		if err != nil {
+			log.Fatal(err.Error())
+		} else if allowRecursion {
+			gorInit(false)
+			return
+		}
 	}
 
 	GOR_VERSION = strings.TrimSpace(cachedGorVersion)
