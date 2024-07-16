@@ -24,6 +24,7 @@ const (
 	FORWARD_SLASH = "FORWARD_SLASH"
 	BACK_SLASH    = "BACK_SLASH"
 	COLON         = "COLON"
+	PERCENT_SIGN  = "PERCENT_SIGN"
 
 	IDENT   tokType = "IDENT"
 	NUMBER  tokType = "NUMBER"
@@ -50,6 +51,7 @@ var KEYWORDS = []string{
 	"if",
 	"elsif",
 	"else",
+	"use",
 }
 
 func isValidForIdent(c rune) bool {
@@ -163,6 +165,9 @@ func (l Lexer) Lex() ([]Token, error) {
 		case ':':
 			tokens = append(tokens, NewToken(COLON, ":", l.idx, l.idx, l.ln))
 			l.advance()
+		case '%':
+			tokens = append(tokens, NewToken(PERCENT_SIGN, "%", l.idx, l.idx, l.ln))
+			l.advance()
 		case '?':
 			l.advance()
 			tokens = append(tokens, l.collectComment())
@@ -213,13 +218,10 @@ func (l *Lexer) collectIdent() Token {
 		l.advance()
 	}
 
-	tok := NewToken(IDENT, ident_str, start, l.idx-1, l.ln)
-
 	if slices.Contains(KEYWORDS, ident_str) {
-		tok.Type = KEYWORD
+		return NewToken(KEYWORD, ident_str, start, l.idx-1, l.ln)
 	}
-
-	return tok
+	return NewToken(IDENT, ident_str, start, l.idx-1, l.ln)
 }
 
 func (l *Lexer) collectString() Token {

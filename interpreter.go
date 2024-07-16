@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
+	"strings"
 )
 
 /*
@@ -21,6 +23,36 @@ func SprintRS(str string, a ...any) string {
 	}
 }
 */
+
+func isFile404Err(err string) bool {
+	return strings.HasPrefix(err, "open ") && strings.HasSuffix(err, ": no such file or directory")
+}
+
+func ImportModule(modpath string, allowFile404Recursion, printVars, printVarsEachCycle bool) (ModuleImport, error) {
+	modcontent, readErr := readFile(modpath)
+	if readErr != nil {
+		if isFile404Err(readErr.Error()) {
+			if allowFile404Recursion {
+				mod, err := ImportModule(path.Join("scripts", modpath), false, printVars, printVarsEachCycle)
+				if err != nil {
+					if !isFile404Err(readErr.Error()) {
+						return ModuleImport{}, err
+					}
+				}
+				return mod, nil
+			}
+			return ModuleImport{}, fmt.Errorf("module '%s' does not exist", modpath)
+		}
+		return ModuleImport{}, readErr
+	}
+
+	mod, modErr := RunGor(modcontent, modpath, true, false, false, printVars, printVarsEachCycle)
+	if modErr != nil {
+		return ModuleImport{}, modErr
+	}
+
+	return mod, nil
+}
 
 func NewGorError(t Token, msg string) error {
 	return fmt.Errorf("error on line %d, col %d-%d: %s", t.Ln, t.Start+1, t.End+2, msg)
@@ -61,7 +93,11 @@ func LabelJump(i *uint, labelTok Token, labels map[string]uint) error {
 	return nil
 }
 
-func Interpret(nodes []Node, printVars, printVarsEachCycle bool) error {
+type ModuleImport struct {
+	vars, funcs map[string]any
+}
+
+func Interpret(nodes []Node, file string, printVars, printVarsEachCycle bool) (ModuleImport, error) {
 	var vars = make(map[string]any)
 	var funcs = make(map[string]any)
 	funcs["puts"] = func(a ...any) {
@@ -73,25 +109,24 @@ func Interpret(nodes []Node, printVars, printVarsEachCycle bool) error {
 		if n, ok := node.(LabelNode); ok {
 			err := AddLabel(&labels, uint(i), n.Name)
 			if err != nil {
-				return err
+				return ModuleImport{}, err
 			}
 		}
 	}
 
 	var i uint = 0
 	for i < uint(len(nodes)) {
-		fmt.Println(i)
 		node := nodes[i]
 		if n, ok := node.(AssignmentNode); ok {
 			err := AssignVar(&vars, &funcs, n.Ident, n.Value.Generate(&vars, &funcs))
 			if err != nil {
-				return err
+				return ModuleImport{}, err
 			}
 			i++
 		} else if n, ok := node.(FunccallNode); ok {
 			err := CallFunc(&vars, &funcs, n.Ident, n.GenerateArgs(&vars, &funcs))
 			if err != nil {
-				return err
+				return ModuleImport{}, err
 			}
 			i++
 		} else if _, ok := node.(LabelNode); ok {
@@ -99,11 +134,29 @@ func Interpret(nodes []Node, printVars, printVarsEachCycle bool) error {
 		} else if n, ok := node.(JumptoNode); ok {
 			err := LabelJump(&i, n.LabelIdent, labels)
 			if err != nil {
-				return err
+				return ModuleImport{}, err
+			}
+			i++
+		} else if n, ok := node.(ModuleImportNode); ok {
+			modpath := path.Join(path.Dir(file), n.PathIdent.Lit)
+			if path.Ext(modpath) == "" {
+				modpath += ".gor"
+			}
+
+			mod, err := ImportModule(modpath, true, printVars, printVarsEachCycle)
+			if err != nil {
+				return ModuleImport{}, err
+			}
+
+			for name, val := range mod.vars {
+				vars[name] = val
+			}
+			for name, fun := range mod.funcs {
+				funcs[name] = fun
 			}
 			i++
 		} else {
-			return errors.New("unknown node '" + reflect.TypeOf(node).Name() + "'")
+			return ModuleImport{}, errors.New("unknown node '" + reflect.TypeOf(node).Name() + "'")
 		}
 
 		if printVarsEachCycle {
@@ -122,5 +175,5 @@ func Interpret(nodes []Node, printVars, printVarsEachCycle bool) error {
 		}
 	}
 
-	return nil
+	return ModuleImport{vars: vars, funcs: funcs}, nil
 }

@@ -20,6 +20,10 @@ type LabelNode struct {
 	Name Token
 }
 
+type ModuleImportNode struct {
+	PathIdent Token
+}
+
 type AssignableValue interface {
 	Generate(*map[string]any, *map[string]any) any
 }
@@ -138,6 +142,26 @@ func (expr ExpressionNode) Generate(vars *map[string]any, funcs *map[string]any)
 		} else if leftIsFloat32 && rightIsFloat32 {
 			return left.(float32) / right.(float32)
 		}
+	case PERCENT_SIGN:
+		if leftIsInt && rightIsInt {
+			return left.(int) % right.(int)
+		}
+	case EQUALS:
+		return left == right
+	case NOT_EQUALS:
+		return left != right
+	case GREATER_THAN:
+		if leftIsInt && rightIsInt {
+			return left.(int) > right.(int)
+		} else if leftIsFloat32 && rightIsFloat32 {
+			return left.(float32) > right.(float32)
+		}
+	case LESSER_THAN:
+		if leftIsInt && rightIsInt {
+			return left.(int) < right.(int)
+		} else if leftIsFloat32 && rightIsFloat32 {
+			return left.(float32) < right.(float32)
+		}
 	}
 	return nil
 }
@@ -170,6 +194,7 @@ func Parse(tokens []Token) ([]Node, error) {
 	if tokens[len(tokens)-1].Type == EOF {
 		tokens = tokens[:len(tokens)-1]
 	}
+
 	var nodes []Node
 	idx := 0
 	for idx < len(tokens) {
@@ -233,11 +258,22 @@ func Parse(tokens []Token) ([]Node, error) {
 			switch tokens[idx].Lit {
 			case "jumpto":
 				if idx+1 < len(tokens) {
-					nodes = append(nodes, JumptoNode{tokens[idx+1]})
-				} else {
-					return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected identifier, but found '%s' instead", string(tokens[idx].Lit)))
+					if tokens[idx+1].Istype(IDENT) {
+						nodes = append(nodes, JumptoNode{tokens[idx+1]})
+						idx += 2
+						continue
+					}
 				}
-				idx += 2
+				return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected identifier, but found '%s' instead", string(tokens[idx].Lit)))
+			case "use":
+				if idx+1 < len(tokens) {
+					if tokens[idx+1].Istype(STRING) {
+						nodes = append(nodes, ModuleImportNode{tokens[idx+1]})
+						idx += 2
+						continue
+					}
+				}
+				return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected string, but found '%s' instead", string(tokens[idx].Lit)))
 			default:
 				return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("unknown keyword '%s'", tokens[idx].Lit))
 			}

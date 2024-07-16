@@ -2,27 +2,41 @@ package main
 
 import "fmt"
 
-func RunGor(text string, printTokens, printNodes, printVars, printVarsEachCycle bool) {
+func RunGor(text, file string, isModuleImport, printTokens, printNodes, printVars, printVarsEachCycle bool) (ModuleImport, error) {
 	lexer := NewLexer(text)
 	tokens, lexerErr := lexer.Lex()
 	if lexerErr != nil {
+		if isModuleImport {
+			return ModuleImport{}, lexerErr
+		}
 		fmt.Println(lexerErr.Error())
-		return
+		return ModuleImport{}, nil
 	} else if printTokens {
 		fmt.Println(tokens)
 	}
 
 	nodes, parseErr := Parse(tokens)
 	if parseErr != nil {
+		if isModuleImport {
+			return ModuleImport{}, parseErr
+		}
 		fmt.Println(parseErr.Error())
-		return
+		return ModuleImport{}, nil
 	} else if printNodes {
 		fmt.Println(nodes)
 	}
 
-	interpretErr := Interpret(nodes, printVars, printVarsEachCycle)
+	mod, interpretErr := Interpret(nodes, file, printVars, printVarsEachCycle)
 	if interpretErr != nil {
+		if isModuleImport {
+			return ModuleImport{}, interpretErr
+		}
 		fmt.Println(interpretErr.Error())
-		return
+		return ModuleImport{}, nil
 	}
+
+	if isModuleImport {
+		return mod, nil
+	}
+	return ModuleImport{}, nil
 }
