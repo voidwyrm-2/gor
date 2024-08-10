@@ -18,19 +18,22 @@ const (
 	LBRACE   tokType = "LBRACE"
 	RBRACE   tokType = "RBRACE"
 
-	PLUS          = "PLUS"
-	HYPHEN        = "HYPHEN"
-	ASTERISK      = "ASTERISK"
-	FORWARD_SLASH = "FORWARD_SLASH"
-	BACK_SLASH    = "BACK_SLASH"
-	COLON         = "COLON"
-	PERCENT_SIGN  = "PERCENT_SIGN"
+	PLUS          tokType = "PLUS"
+	HYPHEN        tokType = "HYPHEN"
+	ASTERISK      tokType = "ASTERISK"
+	FORWARD_SLASH tokType = "FORWARD_SLASH"
+	BACK_SLASH    tokType = "BACK_SLASH"
+	COLON         tokType = "COLON"
+	SEMICOLON     tokType = "SEMICOLON"
+	PERCENT_SIGN  tokType = "PERCENT_SIGN"
 
 	IDENT   tokType = "IDENT"
 	NUMBER  tokType = "NUMBER"
 	STRING  tokType = "STRING"
 	KEYWORD tokType = "KEYWORD"
 
+	AND          tokType = "AND"
+	OR           tokType = "OR"
 	EQUALS       tokType = "EQUALS"
 	NOT_EQUALS   tokType = "NOT_EQUALS"
 	LESSER_THAN  tokType = "LESSER_THAN"
@@ -41,6 +44,8 @@ const (
 	NEWLINE tokType = "NEWLINE"
 	COMMENT tokType = "COMMENT"
 	EOF     tokType = "EOF"
+
+	NULLTOKEN tokType = "NULLTOKEN"
 )
 
 var KEYWORDS = []string{
@@ -147,6 +152,20 @@ func (l Lexer) Lex() ([]Token, error) {
 		case '>':
 			tokens = append(tokens, NewToken(GREATER_THAN, ">", l.idx, l.idx, l.ln))
 			l.advance()
+		case '=':
+			l.advance()
+			if l.cchar != '=' {
+				return []Token{}, NewGorError(NewNilToken(NULLTOKEN, l.idx, l.idx, l.ln), fmt.Sprintf("illegal character '%c'", '='))
+			}
+			tokens = append(tokens, NewToken(EQUALS, "==", l.idx, l.idx, l.ln))
+			l.advance()
+		case '!':
+			l.advance()
+			if l.cchar != '=' {
+				return []Token{}, NewGorError(NewNilToken(NULLTOKEN, l.idx, l.idx, l.ln), fmt.Sprintf("illegal character '%c'", '!'))
+			}
+			tokens = append(tokens, NewToken(NOT_EQUALS, "==", l.idx, l.idx, l.ln))
+			l.advance()
 		case '+':
 			tokens = append(tokens, NewToken(PLUS, "+", l.idx, l.idx, l.ln))
 			l.advance()
@@ -164,6 +183,9 @@ func (l Lexer) Lex() ([]Token, error) {
 			l.advance()
 		case ':':
 			tokens = append(tokens, NewToken(COLON, ":", l.idx, l.idx, l.ln))
+			l.advance()
+		case ';':
+			tokens = append(tokens, NewToken(SEMICOLON, ";", l.idx, l.idx, l.ln))
 			l.advance()
 		case '%':
 			tokens = append(tokens, NewToken(PERCENT_SIGN, "%", l.idx, l.idx, l.ln))
@@ -184,12 +206,12 @@ func (l Lexer) Lex() ([]Token, error) {
 			} else if isValidForIdent(l.cchar) {
 				tokens = append(tokens, l.collectIdent())
 			} else {
-				return []Token{}, NewGorError(NewNilToken(DOT, l.idx, l.idx, l.ln), fmt.Sprintf("illegal character '%c'", l.cchar))
+				return []Token{}, NewGorError(NewNilToken(NULLTOKEN, l.idx, l.idx, l.ln), fmt.Sprintf("illegal character '%c'", l.cchar))
 			}
 		}
 	}
 
-	tokens = append(tokens, NewNilToken(EOF, l.idx, l.idx, l.ln))
+	//tokens = append(tokens, NewNilToken(EOF, l.idx, l.idx, l.ln))
 	return tokens, nil
 }
 

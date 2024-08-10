@@ -23,15 +23,18 @@ Then, run this command:
 go install "github.com/voidwyrm-2/gor@latest"
 ```
 
-## Changelog for 0.4.1
-- The automatic version checker is now a bit better
+## Changelog for 0.5(aka, the "WOW I CAN WRITE GO BETTER THAN A MONKEY, ISN'T THAT INCREDIBLE?" update)
+- Expressions are actually usable(no paranthese though(it scarwy))
+- Removed a bunch of bloat from the main.go file
+- Streamlined the parser a bit
+- IF STATEMENTS WOOOOOOOOOOOO
 
 ## Gor Todo
 - [x] Variable assignment
 - [x] Expressions
 - [x] Labels and `jumpto`
-- [ ] Make my expression parsing not suck
-- [ ] If statements
+- [x] Make my expression parsing not suck
+- [x] If statements
 - [ ] Built-in function calls
 - [ ] Custom functions and calls
 - [ ] ~~Structs but written badly~~ containers

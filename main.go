@@ -3,16 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"os"
 	"path"
 	"slices"
-	"strconv"
 	"strings"
 )
 
+/*
 func ConvertVersionToInts(v string) ([3]int, error) {
 	split := strings.Split(v, ".")
 	str_1 := split[0]
@@ -37,7 +34,7 @@ func ConvertVersionToInts(v string) ([3]int, error) {
 
 /*
 Returns 1 if v1 is bigger than v2, -1 if v1 is smaller than v2, and 0 if equal
-*/
+* /
 func CompareVersions(version_1, version_2 string) (int, error) {
 	v1, err := ConvertVersionToInts(version_1)
 	if err != nil {
@@ -58,6 +55,7 @@ func CompareVersions(version_1, version_2 string) (int, error) {
 
 	return 0, nil
 }
+
 
 func GetGorVersion() string {
 	res, err := http.Get("https://raw.githubusercontent.com/voidwyrm-2/gor/main/gor_version.txt")
@@ -85,10 +83,13 @@ func CheckCurrentGorVersion(localVersion string) {
 		fmt.Println("there's a new version of Gor availible!")
 	}
 }
+*/
 
+/*
 func assertNoError[T any](v T, _ error) T {
 	return v
 }
+*/
 
 func ChangeNestedMapItem(m *map[any]any, dictPath []any, value any, unwrap bool) {
 	var a map[any]any
@@ -130,6 +131,7 @@ func readFile(fileName string) (string, error) {
 	return content, nil
 }
 
+/*
 func writeFile(filename string, data string) error {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -144,6 +146,7 @@ func writeFile(filename string, data string) error {
 
 	return nil
 }
+*/
 
 func GorREPL(printTokens, printNodes, printVarsEachCycle bool) {
 	var codeBuffer []string
@@ -161,6 +164,7 @@ func GorREPL(printTokens, printNodes, printVarsEachCycle bool) {
 			}
 			_, err := RunGor(strings.Join(codeBuffer, "\n"), "<main>", false, printTokens, printNodes, true, printVarsEachCycle)
 			if err != nil {
+				fmt.Println(err.Error())
 				codeBuffer = codeBuffer[:len(codeBuffer)-1]
 			}
 		}
@@ -179,8 +183,9 @@ minor version: increment when there are minor changes
 sub minor version: increment when there are very small changes
 (e.g. a quick one-line grammar change, a change to a variable name)
 */
-var GOR_VERSION = ""
+var GOR_VERSION = "0.4.1"
 
+/*
 func gorInit(allowRecursion bool) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -211,9 +216,10 @@ func gorInit(allowRecursion bool) {
 
 	GOR_VERSION = strings.TrimSpace(cachedGorVersion)
 }
+*/
 
 func main() {
-	gorInit(true)
+	//gorInit(true)
 
 	printTokens := slices.Contains(os.Args, "-t")
 	printNodes := slices.Contains(os.Args, "-n")
@@ -222,7 +228,7 @@ func main() {
 
 	if slices.Contains(os.Args, "--version") {
 		fmt.Println("Gor version " + GOR_VERSION)
-		CheckCurrentGorVersion(GOR_VERSION)
+		//CheckCurrentGorVersion(GOR_VERSION)
 		return
 	}
 

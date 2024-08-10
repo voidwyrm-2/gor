@@ -28,6 +28,20 @@ type AssignableValue interface {
 	Generate(*map[string]any, *map[string]any) any
 }
 
+type IfStatementNode struct {
+	Expr  AssignableValue
+	Nodes []Node
+}
+
+type ElsifStatementNode struct {
+	Expr  AssignableValue
+	Nodes []Node
+}
+
+type ElseStatementNode struct {
+	Nodes []Node
+}
+
 type FunccallNode struct {
 	Ident Token
 	args  []AssignableValue
@@ -56,33 +70,83 @@ func RemoveNewlineTokens(tokens []Token) []Token {
 	return out
 }
 
-func GenerateExpressionNodeFromTokens(tokens []Token) AssignableValue {
-	tokens = RemoveNewlineTokens(tokens)
-	//fmt.Println(tokens)
-	if len(tokens) == 1 {
-		return ValueNode{Val: tokens[0]}
+func CheckTokenType(tokens []Token, index int, _type tokType) bool {
+	if index < len(tokens) {
+		return tokens[index].Istype(_type)
 	}
-	if tokens[len(tokens)-1].Type == EOF {
-		tokens = tokens[:len(tokens)-1]
-	}
-	/*
-		if !tokens[int(len(tokens)/2)].IsMathOp() {
-			tokens = append(tokens, NewToken(PLUS, "+", tokens[len(tokens)-1].Start+2, tokens[len(tokens)-1].End+2, tokens[len(tokens)-1].Ln))
-			if tokens[0].Type == STRING {
-				tokens = append(tokens, NewToken(STRING, "", tokens[len(tokens)-2].Start+2, tokens[len(tokens)-2].End+2, tokens[len(tokens)-1].Ln))
-			} else {
-				tokens = append(tokens, NewToken(NUMBER, "0", tokens[len(tokens)-2].Start+2, tokens[len(tokens)-2].End+2, tokens[len(tokens)-1].Ln))
+	return false
+}
+
+func CollectUntilToken(tokens []Token, _type tokType, oposing_type tokType) ([]Token, bool) {
+	nest := 0
+	var out []Token
+	gotBroken := false
+	for _, t := range tokens {
+		if t.Istype(_type) {
+			if nest > 0 {
+				nest--
+				continue
 			}
+			gotBroken = true
+			break
+		} else if t.Istype(oposing_type) && oposing_type != NULLTOKEN {
+			nest++
 		}
-	*/
+		out = append(out, t)
+	}
+	return out, gotBroken
+}
 
-	//fmt.Println(tokens)
+func IndexTokens(tokens []Token, _type tokType) int {
+	for i, t := range tokens {
+		if t.Istype(_type) {
+			return i
+		}
+	}
+	return -1
+}
 
-	op := tokens[int(len(tokens)/2)]
-	left := tokens[:int(len(tokens)/2)]
-	right := tokens[int(len(tokens)/2)+1:]
+func IndexTokensWithCascadeFailsafe(tokens []Token, types []tokType) int {
+	i := 0
+	index := -1
+	for i < len(types) {
+		index = IndexTokens(tokens, types[i])
+		if index == -1 {
+			i++
+			continue
+		}
+		break
+	}
 
-	return ExpressionNode{Left: GenerateExpressionNodeFromTokens(left), Operand: op, Right: GenerateExpressionNodeFromTokens(right)}
+	return index
+}
+
+func GenerateExpressionNodeFromTokens(tokens []Token) (AssignableValue, error) {
+	tokens = RemoveNewlineTokens(tokens)
+	if len(tokens) == 0 {
+		panic("length of tokens is 0")
+	} else if len(tokens) == 1 {
+		return ValueNode{Val: tokens[0]}, nil
+	}
+
+	index := IndexTokensWithCascadeFailsafe(tokens, []tokType{AND, OR, EQUALS, NOT_EQUALS, GREATER_THAN, LESSER_THAN, FORWARD_SLASH, PERCENT_SIGN, ASTERISK, HYPHEN, PLUS})
+	if index == -1 {
+		return ExpressionNode{}, fmt.Errorf("invalid tokens for expression: %v", tokens)
+	}
+
+	op := tokens[index]
+	left := tokens[:index]
+	right := tokens[index+1:]
+
+	genLeft, leftErr := GenerateExpressionNodeFromTokens(left)
+	if leftErr != nil {
+		return ExpressionNode{}, leftErr
+	}
+	genRight, rightErr := GenerateExpressionNodeFromTokens(right)
+	if rightErr != nil {
+		return ExpressionNode{}, rightErr
+	}
+	return ExpressionNode{Left: genLeft, Operand: op, Right: genRight}, nil
 }
 
 type ExpressionNode struct {
@@ -191,6 +255,9 @@ func (v ValueNode) Generate(vars *map[string]any, funcs *map[string]any) any {
 }
 
 func Parse(tokens []Token) ([]Node, error) {
+	if len(tokens) == 0 {
+		return []Node{}, nil
+	}
 	if tokens[len(tokens)-1].Type == EOF {
 		tokens = tokens[:len(tokens)-1]
 	}
@@ -204,41 +271,25 @@ func Parse(tokens []Token) ([]Node, error) {
 			ident := tokens[idx]
 			idx++
 
-			idx_2 := idx
-			var ctokens []Token
-			found := -1
-			for idx_2 < len(tokens) {
-				if tokens[idx_2].Type == NEWLINE {
-					ctokens = tokens[:idx_2+1]
-					found = idx_2
-					break
+			if tokens[idx].Istype(ASSIGN) {
+				idx++
+				//fmt.Println(tokens)
+				exprToks, _ := CollectUntilToken(tokens[idx:], SEMICOLON, NULLTOKEN)
+				if len(exprToks) == 0 {
+					return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected expression, but found '%s' instead", string(tokens[idx].Lit)))
 				}
-				idx_2++
-			}
-			if found == -1 {
-				ctokens = tokens
-			}
-
-			if ctokens[idx].Istype(ASSIGN) {
-				//fmt.Println("ctokens: ", ctokens[idx+1:])
-				//fmt.Println(idx, idx+1, len(ctokens), idx+1 >= len(ctokens))
-				if idx+1 < len(ctokens) {
-					if idx+2 >= len(ctokens) {
-						nodes = append(nodes, AssignmentNode{ident, ValueNode{ctokens[idx+1]}})
-					} else {
-						nodes = append(nodes, AssignmentNode{ident, GenerateExpressionNodeFromTokens(ctokens[idx+1:])})
-					}
-				} else {
-					return []Node{}, NewGorError(ctokens[idx], fmt.Sprintf("expected expression, but found '%s' instead", string(ctokens[idx].Lit)))
+				gen, err := GenerateExpressionNodeFromTokens(exprToks)
+				if err != nil {
+					return []Node{}, err
 				}
-			} else {
-				return []Node{}, NewGorError(ctokens[idx], fmt.Sprintf("expected assign glyph, but found '%s' instead", string(ctokens[idx].Lit)))
-			}
+				nodes = append(nodes, AssignmentNode{Ident: ident, Value: gen})
 
-			if found != -1 {
-				idx = found
+				if !CheckTokenType(tokens, idx+len(exprToks), SEMICOLON) {
+					return []Node{}, NewGorError(tokens[idx], "expected ';'")
+				}
+				idx += len(exprToks) + 1
 			} else {
-				idx = len(tokens)
+				return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected assign glyph, but found '%s' instead", string(tokens[idx].Lit)))
 			}
 		} else if tokens[idx].Istype(COLON) {
 			if idx+1 < len(tokens) {
@@ -256,22 +307,57 @@ func Parse(tokens []Token) ([]Node, error) {
 			}
 		} else if tokens[idx].Istype(KEYWORD) {
 			switch tokens[idx].Lit {
-			case "jumpto":
-				if idx+1 < len(tokens) {
-					if tokens[idx+1].Istype(IDENT) {
-						nodes = append(nodes, JumptoNode{tokens[idx+1]})
-						idx += 2
-						continue
+			case "if", "elsif", "else":
+				orig := tokens[idx].Lit
+				idx++
+				ifExprToks, ok := CollectUntilToken(tokens[idx:], LBRACE, NULLTOKEN)
+				if !ok {
+					return []Node{}, NewGorError(tokens[idx-1], "expected '{'")
+				}
+				idx += len(ifExprToks) + 1
+
+				ifBodyToks, ok := CollectUntilToken(tokens[idx:], RBRACE, LBRACE)
+				if !ok {
+					return []Node{}, NewGorError(tokens[idx-1], "expected '}'")
+				}
+				//fmt.Println("body", ifBodyToks)
+
+				ifBodyNodes, ifParseErr := Parse(ifBodyToks)
+				if ifParseErr != nil {
+					return []Node{}, ifParseErr
+				}
+
+				if orig == "elsif" {
+					gen, err := GenerateExpressionNodeFromTokens(ifExprToks)
+					if err != nil {
+						return []Node{}, err
 					}
+					nodes = append(nodes, ElsifStatementNode{Expr: gen, Nodes: ifBodyNodes})
+				} else if orig == "else" {
+					nodes = append(nodes, ElseStatementNode{Nodes: ifBodyNodes})
+				} else {
+					gen, err := GenerateExpressionNodeFromTokens(ifExprToks)
+					if err != nil {
+						return []Node{}, err
+					}
+					nodes = append(nodes, IfStatementNode{Expr: gen, Nodes: ifBodyNodes})
+				}
+				idx += len(ifBodyToks) + 1
+			case "jumpto":
+				if CheckTokenType(tokens, idx+1, IDENT) {
+					if !CheckTokenType(tokens, idx+2, SEMICOLON) {
+						return []Node{}, NewGorError(tokens[idx+1], "expected ';'")
+					}
+					nodes = append(nodes, JumptoNode{tokens[idx+1]})
+					idx += 3
+					continue
 				}
 				return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected identifier, but found '%s' instead", string(tokens[idx].Lit)))
 			case "use":
-				if idx+1 < len(tokens) {
-					if tokens[idx+1].Istype(STRING) {
-						nodes = append(nodes, ModuleImportNode{tokens[idx+1]})
-						idx += 2
-						continue
-					}
+				if CheckTokenType(tokens, idx+1, STRING) {
+					nodes = append(nodes, ModuleImportNode{tokens[idx+1]})
+					idx += 2
+					continue
 				}
 				return []Node{}, NewGorError(tokens[idx], fmt.Sprintf("expected string, but found '%s' instead", string(tokens[idx].Lit)))
 			default:

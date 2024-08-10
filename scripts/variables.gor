@@ -1,5 +1,5 @@
-hello <- "Hello!"
+hello <- "Hello!";
 
-one <- 1
+one <- 1;
 
-oneMore <- one + 1
+oneMore <- one + 1;

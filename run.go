@@ -6,33 +6,21 @@ func RunGor(text, file string, isModuleImport, printTokens, printNodes, printVar
 	lexer := NewLexer(text)
 	tokens, lexerErr := lexer.Lex()
 	if lexerErr != nil {
-		if isModuleImport {
-			return ModuleImport{}, lexerErr
-		}
-		fmt.Println(lexerErr.Error())
-		return ModuleImport{}, nil
+		return ModuleImport{}, lexerErr
 	} else if printTokens {
 		fmt.Println(tokens)
 	}
 
 	nodes, parseErr := Parse(tokens)
 	if parseErr != nil {
-		if isModuleImport {
-			return ModuleImport{}, parseErr
-		}
-		fmt.Println(parseErr.Error())
-		return ModuleImport{}, nil
+		return ModuleImport{}, parseErr
 	} else if printNodes {
 		fmt.Println(nodes)
 	}
 
 	mod, interpretErr := Interpret(nodes, file, printVars, printVarsEachCycle)
 	if interpretErr != nil {
-		if isModuleImport {
-			return ModuleImport{}, interpretErr
-		}
-		fmt.Println(interpretErr.Error())
-		return ModuleImport{}, nil
+		return ModuleImport{}, interpretErr
 	}
 
 	if isModuleImport {

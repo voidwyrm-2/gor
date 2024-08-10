@@ -1,0 +1,10 @@
+i <- 0;
+:aLabel:
+
+
+i <- i + 1;
+
+
+if i == 10 {
+    jumpto aLabel;
+}

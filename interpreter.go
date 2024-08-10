@@ -149,8 +149,10 @@ func Interpret(nodes []Node, file string, printVars, printVarsEachCycle bool) (M
 			i++
 		} else if n, ok := node.(ModuleImportNode); ok {
 			modpath := path.Join(path.Dir(file), n.PathIdent.Lit)
-			if path.Ext(modpath) == "" {
+			if pathExt := path.Ext(modpath); pathExt == "" {
 				modpath += ".gor"
+			} else if pathExt != ".gor" {
+				return ModuleImport{}, fmt.Errorf("path '%s' is not a Gor file", modpath)
 			}
 
 			mod, err := ImportModule(modpath, true, printVars, printVarsEachCycle)
@@ -163,6 +165,16 @@ func Interpret(nodes []Node, file string, printVars, printVarsEachCycle bool) (M
 			}
 			for name, fun := range mod.funcs {
 				funcs[name] = fun
+			}
+			i++
+		} else if n, ok := node.(IfStatementNode); ok {
+			res := n.Expr.Generate(&vars, &funcs)
+			if _, ok := res.(bool); !ok {
+				return ModuleImport{}, errors.New("expected boolean value")
+			}
+
+			if res.(bool) {
+				nodes = append(nodes, n.Nodes...)
 			}
 			i++
 		} else {

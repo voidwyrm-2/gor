@@ -1,3 +1,3 @@
-use "variables.gor"
+use "variables.gor";
 
-three <- oneMore + 1
+three <- oneMore + 1;

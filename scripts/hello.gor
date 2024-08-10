@@ -1,3 +1,3 @@
-hello <- "Hello, Catdog!"
+hello <- "Hello, Catdog!";
 
-puts(hello)
+puts(hello);
